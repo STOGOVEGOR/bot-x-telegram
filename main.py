@@ -1,11 +1,12 @@
 import asyncio
+import os
 
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.filters import CommandStart, Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-API_TOKEN = '6391076892:AAGwQHQMKEBAycF_GSrU_r0Zr3-kVCyZTA4'
+API_TOKEN = os.environ['API_TOKEN']
 
 dp = Dispatcher()
 user_router = Router()
