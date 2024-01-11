@@ -6,12 +6,15 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.filters import CommandStart, Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from account import UserAuthorizationService
+
 API_TOKEN = os.environ['API_TOKEN']
 
 dp = Dispatcher()
-user_router = Router()
+# user_router = Router()
 
 bot = Bot(token=API_TOKEN, parse_mode='HTML')
+users_info = {}
 
 
 # @user_router.message(Command('ver1'))
@@ -26,7 +29,24 @@ bot = Bot(token=API_TOKEN, parse_mode='HTML')
 #     await msg.answer('Hello, <b>World</b>!', reply_markup=keyboard)
 #
 #
-@user_router.message(Command('ver2'))
+# @user_router.message(Command('start'))
+
+def user_validation(user_id):
+    try:
+        if users_info[user_id].successful_register:
+            return True
+    except:
+        return False
+
+
+def email_validation(email):
+    return True
+
+
+def password_validation(password):
+    return True
+
+
 async def main_menu(msg: Message):
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(
@@ -41,10 +61,25 @@ async def main_menu(msg: Message):
         text='Start a dialogue',
         callback_data='start_use')
     )
+    builder.row(InlineKeyboardButton(
+        text='Register',
+        callback_data='register')
+    )
     await msg.answer(
         '========  Выберите пункт меню:  =========',
         reply_markup=builder.as_markup()
     )
+
+
+@dp.callback_query(F.data == "register")
+async def register_user(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id in users_info and users_info[user_id].successful_register:
+        await callback.message.answer("Вы уже зарегистрированы!")
+    else:
+        users_info[user_id] = UserAuthorizationService()
+        print(users_info)
+        await callback.message.answer("Введите почту: ")
 
 
 @dp.callback_query(F.data == 'start_use')
@@ -137,22 +172,41 @@ async def select_model_gpt_3_5_4k(callback: CallbackQuery):
 
 # Обработка любого текстового сообщения от пользователя
 @dp.message(F.text)
-# async def free_mode(callback: CallbackQuery):
 async def free_mode(msg: Message):
-    text = ('Мы получили произвольный вопрос от пользователя.\n'
-            f'Вот он: <b>{msg.text}</b>\n'
-            'Обрабатываем, отвечаем: "бла-бла-бла"')
-    # await bot.answer_callback_query(callback.id)
-    await msg.answer(text=text)
+    user_id = msg.from_user.id
+    if user_validation(user_id):
+        text = ('Мы получили произвольный вопрос от пользователя.\n'
+                f'Вот он: <b>{msg.text}</b>\n'
+                'Обрабатываем, отвечаем: "бла-бла-бла"')
+        await msg.answer(text=text)
+    else:
+        if users_info[user_id].email is None:
+            email_validation(msg.text)
+            users_info[user_id].email = msg.text
+            print(users_info[user_id].email)
+            # save to DB
+            await msg.answer('Теперь введите пароль:')
+
+        elif users_info[user_id].password is None:
+            password_validation(msg.text)
+            # save to DB
+            # set status "succesful_register"
+            await msg.answer('Вы успешно зарегистрировались!')
+
+        else:
+            await msg.answer(text='Где-то ошибка')
 
 
-def register_routers(dp: Dispatcher) -> None:
-    dp.include_router(user_router)
+
+
+
+# def register_routers(dp: Dispatcher) -> None:
+#     dp.include_router(user_router)
 
 
 async def main() -> None:
     # bot = Bot(token=API_TOKEN, parse_mode='HTML')
-    register_routers(dp)
+    # register_routers(dp)
 
     await dp.start_polling(bot, skip_updates=True)
 
